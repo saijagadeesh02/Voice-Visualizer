@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Graph Visualizer - Creator Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    colors: {
+                        darkBg: '#080b11',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-button {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .glass-button:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        .glass-button.active {
+            background: rgba(99, 102, 241, 0.25);
+            border-color: rgba(129, 140, 248, 0.6);
+            color: #ffffff;
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+        }
+        /* Hide UI on Clean Canvas Mode */
+        .clean-mode .ui-element {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transition: opacity 0.4s ease;
+        }
+        /* Custom Range Input */
+        input[type=range] {
+            accent-color: #6366f1;
+        }
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(8, 11, 17, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 font-sans min-h-screen flex flex-col justify-between overflow-x-hidden select-none">
+
+    <!-- Glowing Background Atmosphere -->
+    <div class="fixed inset-0 pointer-events-none z-0">
+        <div id="bgGlow1" class="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] transition-all duration-1000"></div>
+        <div id="bgGlow2" class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-600/15 rounded-full blur-[120px] transition-all duration-1000"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div id="appContainer" class="relative z-10 flex flex-col min-h-screen p-4 sm:p-6 max-w-[1700px] mx-auto w-full">
+        
+        <!-- Top Navbar Header -->
+        <header class="ui-element flex flex-wrap items-center justify-between gap-4 pb-4 mb-4 border-b border-slate-800/80">
+            <div class="flex items-center space-x-3">
+                <div class="p-2.5 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl text-white text-xl shadow-lg shadow-indigo-500/20">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold tracking-tight font-display bg-clip-text text-transparent bg-gradient-to-r from-white via-slate-100 to-slate-400">
+                        Voice Graph Visualizer <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Studio</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Content Creator Studio • Press <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">F</kbd> for Clean Canvas</p>
+                </div>
+            </div>
+
+            <!-- Top Actions -->
+            <div class="flex flex-wrap items-center gap-3">
+                <!-- Recording Button -->
+                <button id="recBtn" class="flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600 hover:text-white transition-all shadow-lg shadow-rose-600/10">
+                    <span id="recDot" class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                    <span id="recText">Record Canvas</span>
+                </button>
+
+                <!-- Clean Canvas Mode Button -->
+                <button id="cleanModeToggle" class="glass-button px-4 py-2 rounded-xl text-xs font-medium text-slate-200 flex items-center space-x-2">
+                    <i class="fa-solid fa-expand"></i>
+                    <span>Clean Screen (F)</span>
+                </button>
+
+                <!-- Mic Toggle Button -->
+                <button id="micBtn" class="flex items-center space-x-2 px-5 py-2 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/20 transition-all active:scale-95">
+                    <i class="fa-solid fa-microphone" id="micIcon"></i>
+                    <span id="micBtnText">Use Microphone</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Central Studio Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-grow items-start">
+            
+            <!-- Left Sidebar Controls (3 Cols) -->
+            <aside class="ui-element lg:col-span-3 space-y-4 max-h-[calc(100vh-140px)] overflow-y-auto pr-1">
+                
+                <!-- Audio Source Input Panel -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-compact-disc text-indigo-400"></i>
+                        <span>Audio Source</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="srcMicBtn" class="glass-button active p-2.5 rounded-xl text-xs font-medium flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-microphone"></i>
+                            <span>Live Mic</span>
+                        </button>
+                        <button id="srcFileBtn" class="glass-button p-2.5 rounded-xl text-xs font-medium flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-file-audio"></i>
+                            <span>Audio File</span>
+                        </button>
+                    </div>
+
+                    <!-- Audio File Upload Box (Hidden by default) -->
+                    <div id="fileUploadContainer" class="hidden space-y-2 pt-1">
+                        <label class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-xl cursor-pointer bg-slate-900/40 transition-all">
+                            <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-lg mb-1"></i>
+                            <span class="text-[11px] text-slate-300 font-medium">Upload Audio (MP3, WAV)</span>
+                            <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+                        </label>
+                        <audio id="audioPlayer" controls playsinline class="w-full h-8 text-xs hidden"></audio>
+                    </div>
+                </div>
+
+                <!-- Visualizer Modes (Waveform & Bars Removed) -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-shapes text-indigo-400"></i>
+                        <span>Visualizer Style</span>
+                    </h2>
+                    <div class="grid grid-cols-2 gap-2" id="modeSelector">
+                        <button data-mode="blob" class="mode-btn glass-button active p-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs">
+                            <i class="fa-solid fa-circle-nodes text-base"></i>
+                            <span>Energy Blob</span>
+                        </button>
+                        <button data-mode="ring" class="mode-btn glass-button p-3 rounded-xl flex flex-col items-center justify-center gap-1 text-xs">
+                            <i class="fa-solid fa-circle-notch text-base"></i>
+                            <span>Radial Ring</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Color Themes -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-palette text-indigo-400"></i>
+                        <span>Color Theme</span>
+                    </h2>
+                    <div class="grid grid-cols-2 gap-2" id="themeSelector">
+                        <button data-theme="neonCyber" class="theme-btn glass-button active p-2 rounded-xl text-left flex items-center space-x-2 text-xs">
+                            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-cyan-400 to-indigo-500"></span>
+                            <span>Neon Cyber</span>
+                        </button>
+                        <button data-theme="sunsetGold" class="theme-btn glass-button p-2 rounded-xl text-left flex items-center space-x-2 text-xs">
+                            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-amber-400 to-rose-500"></span>
+                            <span>Sunset Gold</span>
+                        </button>
+                        <button data-theme="deepCosmos" class="theme-btn glass-button p-2 rounded-xl text-left flex items-center space-x-2 text-xs">
+                            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"></span>
+                            <span>Deep Cosmos</span>
+                        </button>
+                        <button data-theme="emeraldMatrix" class="theme-btn glass-button p-2 rounded-xl text-left flex items-center space-x-2 text-xs">
+                            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-500"></span>
+                            <span>Emerald Matrix</span>
+                        </button>
+                        <button data-theme="pastelDream" class="theme-btn glass-button p-2 rounded-xl text-left flex items-center space-x-2 text-xs">
+                            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-pink-300 to-indigo-300"></span>
+                            <span>Pastel Dream</span>
+                        </button>
+                        <button data-theme="monochrome" class="theme-btn glass-button p-2 rounded-xl text-left flex items-center space-x-2 text-xs">
+                            <span class="w-3.5 h-3.5 rounded-full bg-gradient-to-r from-slate-200 to-slate-500"></span>
+                            <span>Monochrome</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Aspect Ratio Presets (1:1 Removed) -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-crop text-indigo-400"></i>
+                        <span>Aspect Ratio</span>
+                    </h2>
+                    <div class="grid grid-cols-2 gap-2" id="aspectSelector">
+                        <button data-aspect="16-9" class="aspect-btn glass-button active p-2.5 rounded-xl text-center flex flex-col items-center justify-center text-[11px] font-medium">
+                            <i class="fa-solid fa-desktop mb-1 text-xs"></i>
+                            <span>16:9 Landscape</span>
+                        </button>
+                        <button data-aspect="9-16" class="aspect-btn glass-button p-2.5 rounded-xl text-center flex flex-col items-center justify-center text-[11px] font-medium">
+                            <i class="fa-solid fa-mobile-screen mb-1 text-xs"></i>
+                            <span>9:16 Shorts</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Text Overlay Settings -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-heading text-indigo-400"></i>
+                        <span>Text & Branding Overlay</span>
+                    </h2>
+                    <div class="space-y-2">
+                        <input type="text" id="overlayTitle" placeholder="Title (e.g. Episode 42: Future of AI)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500">
+                        <input type="text" id="overlaySubtitle" placeholder="Subtitle / Handle (e.g. @CreatorChannel)" class="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-indigo-500">
+                    </div>
+                </div>
+
+                <!-- Audio Sensitivity Settings -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-indigo-400"></i>
+                        <span>Sensitivity & Smoothing</span>
+                    </h2>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <label class="text-slate-300">Sensitivity Gain</label>
+                            <span id="gainVal" class="text-indigo-400 font-mono">2.2x</span>
+                        </div>
+                        <input type="range" id="gainSlider" min="0.5" max="5.0" step="0.1" value="2.2" class="w-full h-1 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <label class="text-slate-300">Smoothness</label>
+                            <span id="smoothVal" class="text-indigo-400 font-mono">0.82</span>
+                        </div>
+                        <input type="range" id="smoothSlider" min="0.5" max="0.95" step="0.05" value="0.82" class="w-full h-1 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+                <!-- Rest Size & Blob Sensitivity Tuning -->
+                <div class="glass-panel p-4 rounded-2xl space-y-3">
+                    <h2 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center space-x-2">
+                        <i class="fa-solid fa-compress text-indigo-400"></i>
+                        <span>Blob Rest & Dynamic Expansion</span>
+                    </h2>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <label class="text-slate-300">Idle Base Size</label>
+                            <span id="restSizeVal" class="text-indigo-400 font-mono">0.08x</span>
+                        </div>
+                        <input type="range" id="restSizeSlider" min="0.04" max="0.25" step="0.01" value="0.08" class="w-full h-1 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between">
+                            <label class="text-slate-300">Voice Expansion Boost</label>
+                            <span id="expansionVal" class="text-indigo-400 font-mono">2.2x</span>
+                        </div>
+                        <input type="range" id="expansionSlider" min="1.0" max="4.0" step="0.1" value="2.2" class="w-full h-1 bg-slate-700 rounded-lg cursor-pointer">
+                    </div>
+                </div>
+
+            </aside>
+            
+            <!-- Center Visualizer Canvas Display (9 Cols) -->
+            <main class="lg:col-span-9 flex flex-col items-center justify-center min-h-[550px] relative w-full">
+                
+                <!-- Canvas Wrapper Frame - Fixed 1:1 Square Ratio -->
+                <div id="canvasViewport" class="relative w-full aspect-square max-w-[560px] glass-panel rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 border border-slate-700/50">
+                    
+                    <!-- Main Canvas -->
+                    <canvas id="visualizerCanvas" class="w-full h-full block z-0"></canvas>
+
+                    <!-- In-App Notification Toast (Replaces alert()) -->
+                    <div id="toastMessage" class="hidden absolute top-4 left-4 right-4 bg-rose-950/90 border border-rose-500/50 text-rose-200 text-xs px-4 py-2.5 rounded-xl shadow-xl z-30 transition-all text-center"></div>
+
+                    <!-- Press F Overlay Helper -->
+                    <div id="cleanModeHint" class="ui-element absolute top-4 right-4 bg-slate-900/60 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 text-[11px] text-slate-300 z-10 flex items-center space-x-2">
+                        <i class="fa-solid fa-circle-info text-indigo-400"></i>
+                        <span>Press <strong>'F'</strong> for Clean Recording</span>
+                    </div>
+
+                    <!-- Floating Audio Volume Meter -->
+                    <div class="ui-element absolute bottom-4 right-4 bg-slate-900/70 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-700/60 text-[11px] text-slate-300 z-10 flex items-center space-x-2">
+                        <span>Vol:</span>
+                        <div class="w-16 bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div id="volLevel" class="bg-indigo-400 h-full w-0 transition-all duration-75"></div>
+                        </div>
+                    </div>
+
+                    <!-- Overlay Mic Request Prompt -->
+                    <div id="startOverlay" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md z-20 flex flex-col items-center justify-center p-6 text-center transition-opacity duration-300">
+                        <div class="w-16 h-16 rounded-2xl bg-indigo-600/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 text-2xl mb-4 animate-bounce">
+                            <i class="fa-solid fa-microphone"></i>
+                        </div>
+                        <h3 class="text-xl font-bold font-display text-white mb-2">1:1 Creator Voice Studio</h3>
+                        <p class="text-xs text-slate-400 max-w-sm mb-6">Enable your microphone to generate dynamic voice graph visuals built for square social recordings.</p>
+                        <button id="overlayMicBtn" class="px-6 py-3 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-xl shadow-indigo-600/30 transition-all">
+                            Enable Microphone Now
+                        </button>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+
+        <!-- Footer -->
+        <footer class="ui-element mt-6 pt-4 border-t border-slate-800/80 flex flex-wrap items-center justify-between text-xs text-slate-500">
+            <p>Voice Graph Visualizer Studio • HTML5 Web Audio API Canvas Engine</p>
+            <p>Hotkeys: <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">F</kbd> Clean View | <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">R</kbd> Record | <kbd class="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-slate-300">Space</kbd> Pause Audio</p>
+        </footer>
+    </div>
+
+    <!-- Application JavaScript Engine -->
+    <script>
+        // --- Color Palettes Config ---
+        const PALETTES = {
+            neonCyber: {
+                stops: ['#00f2fe', '#4facfe', '#7f00ff'],
+                accent: '#00f2fe',
+                glow: 'rgba(0, 242, 254, 0.4)',
+                bgGlow: ['rgba(79, 172, 254, 0.2)', 'rgba(127, 0, 255, 0.2)']
+            },
+            sunsetGold: {
+                stops: ['#ff4e50', '#f9d423', '#ff007f'],
+                accent: '#f9d423',
+                glow: 'rgba(249, 212, 35, 0.4)',
+                bgGlow: ['rgba(255, 78, 80, 0.2)', 'rgba(255, 0, 127, 0.2)']
+            },
+            deepCosmos: {
+                stops: ['#a855f7', '#ec4899', '#6366f1'],
+                accent: '#ec4899',
+                glow: 'rgba(236, 72, 153, 0.4)',
+                bgGlow: ['rgba(168, 85, 247, 0.2)', 'rgba(99, 102, 241, 0.2)']
+            },
+            emeraldMatrix: {
+                stops: ['#10b981', '#34d399', '#064e3b'],
+                accent: '#34d399',
+                glow: 'rgba(52, 211, 153, 0.4)',
+                bgGlow: ['rgba(16, 185, 129, 0.2)', 'rgba(5, 150, 105, 0.2)']
+            },
+            pastelDream: {
+                stops: ['#f472b6', '#38bdf8', '#c084fc'],
+                accent: '#f472b6',
+                glow: 'rgba(244, 114, 182, 0.4)',
+                bgGlow: ['rgba(244, 114, 182, 0.2)', 'rgba(56, 189, 248, 0.2)']
+            },
+            monochrome: {
+                stops: ['#ffffff', '#94a3b8', '#475569'],
+                accent: '#ffffff',
+                glow: 'rgba(255, 255, 255, 0.3)',
+                bgGlow: ['rgba(148, 163, 184, 0.15)', 'rgba(71, 85, 105, 0.15)']
+            }
+        };
+
+        // --- DOM Elements ---
+        const canvas = document.getElementById('visualizerCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasViewport = document.getElementById('canvasViewport');
+        const startOverlay = document.getElementById('startOverlay');
+        const micBtn = document.getElementById('micBtn');
+        const micIcon = document.getElementById('micIcon');
+        const micBtnText = document.getElementById('micBtnText');
+        const overlayMicBtn = document.getElementById('overlayMicBtn');
+        const recBtn = document.getElementById('recBtn');
+        const recDot = document.getElementById('recDot');
+        const recText = document.getElementById('recText');
+        const cleanModeToggle = document.getElementById('cleanModeToggle');
+        const volLevel = document.getElementById('volLevel');
+        const bgGlow1 = document.getElementById('bgGlow1');
+        const bgGlow2 = document.getElementById('bgGlow2');
+        const gainSlider = document.getElementById('gainSlider');
+        const gainVal = document.getElementById('gainVal');
+        const smoothSlider = document.getElementById('smoothSlider');
+        const smoothVal = document.getElementById('smoothVal');
+        const restSizeSlider = document.getElementById('restSizeSlider');
+        const restSizeVal = document.getElementById('restSizeVal');
+        const expansionSlider = document.getElementById('expansionSlider');
+        const expansionVal = document.getElementById('expansionVal');
+        const srcMicBtn = document.getElementById('srcMicBtn');
+        const srcFileBtn = document.getElementById('srcFileBtn');
+        const fileUploadContainer = document.getElementById('fileUploadContainer');
+        const audioFileInput = document.getElementById('audioFileInput');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const overlayTitle = document.getElementById('overlayTitle');
+        const overlaySubtitle = document.getElementById('overlaySubtitle');
+        const dispTitle = document.getElementById('dispTitle');
+        const dispSubtitle = document.getElementById('dispSubtitle');
+
+        // --- Application State ---
+        const state = {
+            audioContext: null,
+            analyserNode: null,
+            gainNode: null,
+            audioSourceNode: null,
+            mediaStream: null,
+            audioElement: null,
+            activeSourceType: 'mic',
+            isAudioPlaying: false,
+            mode: 'blob', // 'blob' | 'ring'
+            theme: 'neonCyber',
+            gain: 2.2,
+            smoothing: 0.82,
+            restBaseRatio: 0.08,
+            expansionFactor: 2.2,
+            isRecordingCanvas: false,
+            mediaRecorder: null,
+            recordedChunks: [],
+            isCleanMode: false,
+            particles: [],
+            blobAngle: 0
+        };
+
+        // UI Toast Helper (Replaces alert)
+        function showToast(msg) {
+            const toast = document.getElementById('toastMessage');
+            if (!toast) return;
+            toast.textContent = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 4000);
+        }
+
+        // --- High-DPI Canvas Resizing ---
+        function resizeCanvas() {
+            // When actively recording, keep the resolution locked to pristine HD (1080p)
+            if (state.isRecordingCanvas) return;
+
+            const rect = canvasViewport.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            initParticles();
+        }
+
+        // --- Particle Engine ---
+        function initParticles() {
+            state.particles = [];
+            const w = canvas.width;
+            const h = canvas.height;
+            for (let i = 0; i < 40; i++) {
+                state.particles.push({
+                    x: Math.random() * w,
+                    y: Math.random() * h,
+                    radius: (Math.random() * 2 + 1.5) * (w / 600),
+                    vx: (Math.random() - 0.5) * 0.8 * (w / 600),
+                    vy: (Math.random() - 0.5) * 0.8 * (w / 600),
+                    alpha: Math.random() * 0.5 + 0.2
+                });
+            }
+        }
+
+        function drawParticles(vol, w, h) {
+            const palette = PALETTES[state.theme];
+            ctx.fillStyle = palette.accent;
+            const scale = w / 600;
+
+            state.particles.forEach(p => {
+                p.x += p.vx * (1 + vol * 0.02);
+                p.y += p.vy * (1 + vol * 0.02);
+
+                if (p.x < 0) p.x = w;
+                if (p.x > w) p.x = 0;
+                if (p.y < 0) p.y = h;
+                if (p.y > h) p.y = 0;
+
+                ctx.save();
+                ctx.globalAlpha = p.alpha * (0.4 + (vol / 255) * 0.6);
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius * (1 + (vol / 255) * 1.5), 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        // --- Web Audio Context Engine ---
+        function initAudioContext() {
+            if (!state.audioContext) {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                state.audioContext = new AudioCtx();
+                state.analyserNode = state.audioContext.createAnalyser();
+                state.analyserNode.fftSize = 256;
+                state.analyserNode.smoothingTimeConstant = state.smoothing;
+
+                state.gainNode = state.audioContext.createGain();
+                state.gainNode.gain.value = state.gain;
+            }
+            if (state.audioContext.state === 'suspended') {
+                state.audioContext.resume();
+            }
+        }
+
+        async function startMicrophone() {
+            try {
+                initAudioContext();
+                state.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                
+                if (state.audioSourceNode) state.audioSourceNode.disconnect();
+
+                state.audioSourceNode = state.audioContext.createMediaStreamSource(state.mediaStream);
+                state.audioSourceNode.connect(state.gainNode);
+                state.gainNode.connect(state.analyserNode);
+
+                state.isAudioPlaying = true;
+                startOverlay.style.opacity = '0';
+                setTimeout(() => startOverlay.style.display = 'none', 300);
+
+                micBtnText.textContent = 'Mic Active';
+                micIcon.className = 'fa-solid fa-microphone-slash text-rose-400';
+                micBtn.className = 'flex items-center space-x-2 px-5 py-2 rounded-xl font-semibold text-xs text-rose-300 bg-rose-500/20 border border-rose-500/40 hover:bg-rose-500/30 shadow-md transition-all active:scale-95';
+
+                renderLoop();
+            } catch (err) {
+                showToast('Microphone access denied or unavailable: ' + err.message);
+            }
+        }
+
+        function stopMicrophone() {
+            if (state.mediaStream) {
+                state.mediaStream.getTracks().forEach(track => track.stop());
+                state.mediaStream = null;
+            }
+            state.isAudioPlaying = false;
+            micBtnText.textContent = 'Use Microphone';
+            micIcon.className = 'fa-solid fa-microphone';
+            micBtn.className = 'flex items-center space-x-2 px-5 py-2 rounded-xl font-semibold text-xs text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/20 transition-all active:scale-95';
+        }
+
+        // --- Main Render Loop ---
+        function renderLoop() {
+            if (!state.isAudioPlaying || !state.analyserNode) return;
+
+            // Use exact internal canvas buffer width & height for rendering
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const bufferLength = state.analyserNode.frequencyBinCount;
+            const freqData = new Uint8Array(bufferLength);
+            state.analyserNode.getByteFrequencyData(freqData);
+
+            // Calculate Volume for UI Meter & Dynamic Glow
+            let sum = 0;
+            for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+            const avgVol = sum / freqData.length;
+            volLevel.style.width = `${Math.min(100, (avgVol / 128) * 100)}%`;
+
+            // Update Dynamic Background Glow Intensity based on Volume
+            const currentPalette = PALETTES[state.theme];
+            bgGlow1.style.backgroundColor = currentPalette.bgGlow[0];
+            bgGlow2.style.backgroundColor = currentPalette.bgGlow[1];
+            bgGlow1.style.transform = `scale(${1 + (avgVol / 255) * 0.5})`;
+
+            // Draw Active Mode
+            if (state.mode === 'blob') {
+                drawBlob(freqData, w, h);
+            } else if (state.mode === 'ring') {
+                drawRadialRing(freqData, w, h);
+            }
+
+            // Draw Background Floating Particles
+            drawParticles(avgVol, w, h);
+
+            // Render Branding & Text Overlay directly onto Canvas for cleanest exported recording
+            drawCanvasTextOverlay(w, h);
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        // --- Render Text directly to Canvas Context ---
+        function drawCanvasTextOverlay(w, h) {
+            const title = overlayTitle.value.trim();
+            const subtitle = overlaySubtitle.value.trim();
+            if (!title && !subtitle) return;
+
+            const scale = w / 600;
+            ctx.save();
+            ctx.textAlign = 'center';
+
+            if (title) {
+                const fontSize = Math.round(26 * scale);
+                ctx.font = `800 ${fontSize}px "Outfit", sans-serif`;
+                ctx.fillStyle = '#ffffff';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 10 * scale;
+                ctx.fillText(title, w / 2, h - (70 * scale));
+            }
+
+            if (subtitle) {
+                const fontSize = Math.round(15 * scale);
+                ctx.font = `600 ${fontSize}px "Plus Jakarta Sans", sans-serif`;
+                ctx.fillStyle = '#a5b4fc';
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 8 * scale;
+                ctx.fillText(subtitle, w / 2, h - (40 * scale));
+            }
+
+            ctx.restore();
+        }
+
+        // --- Visualizer Mode 1: Reactive Energy Blob ---
+        function drawBlob(freqData, w, h) {
+            const palette = PALETTES[state.theme];
+            const cx = w / 2;
+            const cy = h / 2;
+            const baseRadius = Math.min(w, h) * state.restBaseRatio;
+            const points = 16;
+            const step = (Math.PI * 2) / points;
+            const scale = w / 600;
+
+            state.blobAngle += 0.015;
+
+            // Compute total average energy
+            let sum = 0;
+            for (let i = 0; i < freqData.length; i++) sum += freqData[i];
+            const avgAudio = sum / freqData.length;
+
+            const coords = [];
+            for (let i = 0; i < points; i++) {
+                const angle = i * step + state.blobAngle;
+                const sampleIdx = Math.floor((i / points) * (freqData.length / 2));
+                const audioVal = freqData[sampleIdx] / 255;
+
+                // Rest radius + frequency response scaling
+                const r = baseRadius + (audioVal * baseRadius * state.expansionFactor) + Math.sin(state.blobAngle * 2 + i) * (baseRadius * 0.15);
+
+                const x = cx + Math.cos(angle) * r;
+                const y = cy + Math.sin(angle) * r;
+                coords.push({ x, y });
+            }
+
+            // Draw Liquid Energy Path with Bezier Curves
+            ctx.save();
+
+            const gradient = ctx.createRadialGradient(cx, cy, baseRadius * 0.2, cx, cy, baseRadius * (1 + state.expansionFactor));
+            gradient.addColorStop(0, palette.stops[0]);
+            gradient.addColorStop(0.5, palette.stops[1] || palette.stops[0]);
+            gradient.addColorStop(1, palette.stops[2] || palette.stops[0]);
+
+            ctx.fillStyle = gradient;
+            ctx.shadowColor = palette.accent;
+            ctx.shadowBlur = (20 + (avgAudio / 255) * 30) * scale;
+
+            ctx.beginPath();
+            ctx.moveTo((coords[0].x + coords[points - 1].x) / 2, (coords[0].y + coords[points - 1].y) / 2);
+
+            for (let i = 0; i < points; i++) {
+                const current = coords[i];
+                const next = coords[(i + 1) % points];
+                const midX = (current.x + next.x) / 2;
+                const midY = (current.y + next.y) / 2;
+                ctx.quadraticCurveTo(current.x, current.y, midX, midY);
+            }
+
+            ctx.closePath();
+            ctx.fill();
+
+            // Dynamic Core Glow
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.2 + (avgAudio / 255) * 0.5;
+            ctx.beginPath();
+            ctx.arc(cx, cy, baseRadius * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // --- Visualizer Mode 2: Radial Pulsing Ring ---
+        function drawRadialRing(freqData, w, h) {
+            const palette = PALETTES[state.theme];
+            const cx = w / 2;
+            const cy = h / 2;
+            const radius = Math.min(w, h) * (state.restBaseRatio * 1.5);
+            const bars = 64;
+            const scale = w / 600;
+
+            for (let i = 0; i < bars; i++) {
+                const angle = (i / bars) * Math.PI * 2;
+                const audioVal = freqData[i % (freqData.length / 2)] / 255;
+                const barLen = audioVal * (radius * state.expansionFactor);
+
+                const x1 = cx + Math.cos(angle) * radius;
+                const y1 = cy + Math.sin(angle) * radius;
+                const x2 = cx + Math.cos(angle) * (radius + barLen);
+                const y2 = cy + Math.sin(angle) * (radius + barLen);
+
+                ctx.strokeStyle = palette.stops[i % palette.stops.length];
+                ctx.lineWidth = 3.5 * scale;
+                ctx.lineCap = 'round';
+                ctx.shadowColor = palette.accent;
+                ctx.shadowBlur = 12 * scale;
+
+                ctx.beginPath();
+                ctx.moveTo(x1, y1);
+                ctx.lineTo(x2, y2);
+                ctx.stroke();
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // --- Screen & Canvas Media Recorder ---
+        function startCanvasRecording() {
+            // Lock internal canvas buffer size to pristine Full HD resolution (1080p) during recording
+            const activeAspectBtn = document.querySelector('.aspect-btn.active');
+            const aspect = activeAspectBtn ? activeAspectBtn.getAttribute('data-aspect') : '9-16';
+
+            // Check if device is iOS / iPadOS to set supported HD scale
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            
+            if (aspect === '9-16') {
+                canvas.width = isIOS ? 720 : 1080;
+                canvas.height = isIOS ? 1280 : 1920;
+            } else {
+                canvas.width = isIOS ? 1280 : 1920;
+                canvas.height = isIOS ? 720 : 1080;
+            }
+
+            initParticles();
+
+            // Ensure 60 FPS canvas video capture
+            const stream = canvas.captureStream(60); 
+
+            // If an audio file is playing, attach its destination node stream to the video recorder
+            if (state.activeSourceType === 'file' && audioPlayer) {
+                try {
+                    const audioStream = audioPlayer.captureStream ? audioPlayer.captureStream() : audioPlayer.mozCaptureStream();
+                    if (audioStream && audioStream.getAudioTracks().length > 0) {
+                        stream.addTrack(audioStream.getAudioTracks()[0]);
+                    }
+                } catch (e) {
+                    console.warn('Audio capture stream fallback enabled', e);
+                }
+            } else if (state.mediaStream) {
+                const audioTrack = state.mediaStream.getAudioTracks()[0];
+                if (audioTrack) stream.addTrack(audioTrack);
+            }
+
+            state.recordedChunks = [];
+            
+            // Codec Selection & Bitrate Setup
+            const videoBitsPerSecond = isIOS ? 15000000 : 40000000; 
+            const types = [
+                'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+                'video/mp4',
+                'video/webm;codecs=vp9,opus',
+                'video/webm;codecs=vp8,opus',
+                'video/webm;codecs=h264,opus',
+                'video/webm'
+            ];
+
+            let selectedType = types.find(type => MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) || '';
+
+            try {
+                const recorderOptions = selectedType ? { mimeType: selectedType, videoBitsPerSecond } : { videoBitsPerSecond };
+                state.mediaRecorder = new MediaRecorder(stream, recorderOptions);
+            } catch (err) {
+                state.mediaRecorder = new MediaRecorder(stream);
+            }
+
+            state.mediaRecorder.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) state.recordedChunks.push(e.data);
+            };
+
+            state.mediaRecorder.onstop = exportRecordedVideo;
+
+            state.mediaRecorder.start(1000); 
+            state.isRecordingCanvas = true;
+
+            recText.textContent = 'Stop Recording';
+            recDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500 animate-ping';
+            recBtn.className = 'flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white shadow-lg shadow-rose-600/40 transition-all';
+        }
+
+        function stopCanvasRecording() {
+            if (state.mediaRecorder) {
+                state.mediaRecorder.stop();
+                state.isRecordingCanvas = false;
+
+                // Re-enable dynamic responsive scaling after recording ends
+                resizeCanvas();
+
+                recText.textContent = 'Record Canvas';
+                recDot.className = 'w-2.5 h-2.5 rounded-full bg-rose-500';
+                recBtn.className = 'flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600/20 border border-rose-500/40 text-rose-300 hover:bg-rose-600 hover:text-white transition-all shadow-lg shadow-rose-600/10';
+            }
+        }
+
+        function exportRecordedVideo() {
+            const extension = (state.mediaRecorder && state.mediaRecorder.mimeType.includes('mp4')) ? 'mp4' : 'webm';
+            const blob = new Blob(state.recordedChunks, { type: state.mediaRecorder ? state.mediaRecorder.mimeType : 'video/webm' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `voice-visualizer-${Date.now()}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        // --- Clean Screen Mode ---
+        function toggleCleanMode() {
+            state.isCleanMode = !state.isCleanMode;
+            if (state.isCleanMode) {
+                document.body.classList.add('clean-mode');
+            } else {
+                document.body.classList.remove('clean-mode');
+            }
+        }
+
+        // --- Audio File Handling ---
+        function handleAudioFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            initAudioContext();
+            const fileURL = URL.createObjectURL(file);
+            audioPlayer.src = fileURL;
+            audioPlayer.classList.remove('hidden');
+
+            if (!state.audioElement) {
+                state.audioSourceNode = state.audioContext.createMediaElementSource(audioPlayer);
+                state.audioSourceNode.connect(state.gainNode);
+                state.gainNode.connect(state.analyserNode);
+                state.analyserNode.connect(state.audioContext.destination);
+                state.audioElement = audioPlayer;
+            }
+
+            // Unlock audio context on user interaction for iPad Safari
+            if (state.audioContext.state === 'suspended') {
+                state.audioContext.resume();
+            }
+
+            audioPlayer.play().then(() => {
+                state.isAudioPlaying = true;
+                startOverlay.style.opacity = '0';
+                setTimeout(() => startOverlay.style.display = 'none', 300);
+                renderLoop();
+            }).catch(err => {
+                showToast('Tap play on the audio player to start');
+            });
+        }
+
+        // Init App
+        function setupEvents() {
+            // Window Resize
+            window.addEventListener('resize', resizeCanvas);
+
+            // Audio Source Switches
+            srcMicBtn.addEventListener('click', () => {
+                state.activeSourceType = 'mic';
+                srcMicBtn.classList.add('active');
+                srcFileBtn.classList.remove('active');
+                fileUploadContainer.classList.add('hidden');
+                stopMicrophone();
+            });
+
+            srcFileBtn.addEventListener('click', () => {
+                state.activeSourceType = 'file';
+                srcFileBtn.classList.add('active');
+                srcMicBtn.classList.remove('active');
+                fileUploadContainer.classList.remove('hidden');
+                stopMicrophone();
+            });
+
+            // Audio File Upload Listener
+            audioFileInput.addEventListener('change', handleAudioFileUpload);
+
+            if (audioPlayer) {
+                audioPlayer.addEventListener('play', () => {
+                    initAudioContext();
+                    state.isAudioPlaying = true;
+                    renderLoop();
+                });
+                audioPlayer.addEventListener('pause', () => {
+                    state.isAudioPlaying = false;
+                });
+                audioPlayer.addEventListener('ended', () => {
+                    state.isAudioPlaying = false;
+                });
+            }
+
+            // Microphone Buttons
+            micBtn.addEventListener('click', () => {
+                if (state.mediaStream) {
+                    stopMicrophone();
+                } else {
+                    startMicrophone();
+                }
+            });
+
+            overlayMicBtn.addEventListener('click', () => {
+                startMicrophone();
+            });
+
+            // Record Button
+            recBtn.addEventListener('click', () => {
+                if (state.isRecordingCanvas) {
+                    stopCanvasRecording();
+                } else {
+                    startCanvasRecording();
+                }
+            });
+
+            // Clean Mode Toggle
+            cleanModeToggle.addEventListener('click', toggleCleanMode);
+
+            // Mode Selector
+            const modeBtns = document.querySelectorAll('#modeSelector .mode-btn');
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    modeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.mode = btn.getAttribute('data-mode');
+                });
+            });
+
+            // Color Theme Selector
+            const themeBtns = document.querySelectorAll('#themeSelector .theme-btn');
+            themeBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    themeBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    state.theme = btn.getAttribute('data-theme');
+                });
+            });
+
+            // Aspect Ratio Selector
+            const aspectBtns = document.querySelectorAll('#aspectSelector .aspect-btn');
+            aspectBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    aspectBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const aspect = btn.getAttribute('data-aspect');
+                    if (aspect === '9-16') {
+                        canvasViewport.className = 'relative w-full aspect-[9/16] max-w-[360px] glass-panel rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 border border-slate-700/50';
+                    } else {
+                        canvasViewport.className = 'relative w-full aspect-video max-w-[700px] glass-panel rounded-3xl overflow-hidden flex items-center justify-center shadow-2xl transition-all duration-500 border border-slate-700/50';
+                    }
+                    setTimeout(resizeCanvas, 300);
+                });
+            });
+
+            // Sliders Tuning
+            gainSlider.addEventListener('input', (e) => {
+                state.gain = parseFloat(e.target.value);
+                gainVal.textContent = state.gain.toFixed(1) + 'x';
+                if (state.gainNode) state.gainNode.gain.value = state.gain;
+            });
+
+            smoothSlider.addEventListener('input', (e) => {
+                state.smoothing = parseFloat(e.target.value);
+                smoothVal.textContent = state.smoothing.toFixed(2);
+                if (state.analyserNode) state.analyserNode.smoothingTimeConstant = state.smoothing;
+            });
+
+            restSizeSlider.addEventListener('input', (e) => {
+                state.restBaseRatio = parseFloat(e.target.value);
+                restSizeVal.textContent = state.restBaseRatio.toFixed(2) + 'x';
+            });
+
+            expansionSlider.addEventListener('input', (e) => {
+                state.expansionFactor = parseFloat(e.target.value);
+                expansionVal.textContent = state.expansionFactor.toFixed(1) + 'x';
+            });
+
+            // Hotkeys
+            window.addEventListener('keydown', (e) => {
+                if (e.target.tagName === 'INPUT') return; // Ignore input fields
+                if (e.key === 'f' || e.key === 'F') {
+                    toggleCleanMode();
+                } else if (e.key === 'r' || e.key === 'R') {
+                    if (state.isRecordingCanvas) stopCanvasRecording();
+                    else startCanvasRecording();
+                } else if (e.code === 'Space') {
+                    e.preventDefault();
+                    if (audioPlayer && audioPlayer.src) {
+                        if (audioPlayer.paused) audioPlayer.play();
+                        else audioPlayer.pause();
+                    }
+                }
+            });
+        }
+
+        window.addEventListener('load', () => {
+            setupEvents();
+            resizeCanvas();
+        });
+    </script>
+</body>
+</html>
