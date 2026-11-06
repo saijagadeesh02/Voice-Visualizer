@@ -146,8 +146,8 @@
                     <div id="fileUploadContainer" class="hidden space-y-2 pt-1">
                         <label class="flex flex-col items-center justify-center p-3 border-2 border-dashed border-slate-700 hover:border-indigo-500/60 rounded-xl cursor-pointer bg-slate-900/40 transition-all">
                             <i class="fa-solid fa-cloud-arrow-up text-slate-400 text-lg mb-1"></i>
-                            <span class="text-[11px] text-slate-300 font-medium">Upload Audio (MP3, WAV)</span>
-                            <input type="file" id="audioFileInput" accept="audio/*" class="hidden">
+                            <span class="text-[11px] text-slate-300 font-medium">Upload Audio (MP3, WAV, M4A)</span>
+                            <input type="file" id="audioFileInput" accept=".wav,.WAV,audio/wav,audio/x-wav,audio/wave,audio/x-pn-wav,.mp3,audio/mpeg,.m4a,audio/m4a,.aac,audio/*" class="hidden">
                         </label>
                         <audio id="audioPlayer" controls playsinline class="w-full h-8 text-xs hidden"></audio>
                     </div>
@@ -838,6 +838,17 @@
             if (!file) return;
 
             initAudioContext();
+
+            // Explicitly set type if missing on iPadOS Chrome
+            let fileType = file.type;
+            if (!fileType || fileType === '') {
+                if (file.name.toLowerCase().endsWith('.wav')) {
+                    fileType = 'audio/wav';
+                } else if (file.name.toLowerCase().endsWith('.m4a')) {
+                    fileType = 'audio/m4a';
+                }
+            }
+
             const fileURL = URL.createObjectURL(file);
             audioPlayer.src = fileURL;
             audioPlayer.classList.remove('hidden');
@@ -850,8 +861,8 @@
                 state.audioElement = audioPlayer;
             }
 
-            // Unlock audio context on user interaction for iPad Safari
-            if (state.audioContext.state === 'suspended') {
+            // Unlock audio context on touch interaction for iPad Chrome / Safari
+            if (state.audioContext && state.audioContext.state === 'suspended') {
                 state.audioContext.resume();
             }
 
@@ -861,7 +872,7 @@
                 setTimeout(() => startOverlay.style.display = 'none', 300);
                 renderLoop();
             }).catch(err => {
-                showToast('Tap play on the audio player to start');
+                showToast('Tap play on the audio player to start playback on iPad');
             });
         }
 
